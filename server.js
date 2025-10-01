@@ -258,7 +258,7 @@ server.listen(PORT, () => {
       console.log(`Secure Admin Panel: https://14.225.220.70:${HTTPS_PORT}/admin`);
     });
   } else {
-    console.log(`\n⚠️  HTTPS not enabled. Camera access will only work on localhost.`);
+    console.log(`\n  HTTPS not enabled. Camera access will only work on localhost.`);
     console.log(`To enable HTTPS for network access:`);
     console.log(`1. Create ssl/ directory`);
     console.log(`2. Generate self-signed certificates:`);

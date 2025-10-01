@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  livestream:
+    build: .
+    container_name: clinic-livestream
+    restart: unless-stopped
+    ports:
+      - "3000:3000"      # HTTP
+      - "3443:3443"      # HTTPS
+      - "1935:1935"      # RTMP
+      - "8000:8000"      # HTTP Media Server
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HTTPS_PORT=3443
+    volumes:
+      - ./ssl:/app/ssl:ro
+      - ./temp:/app/temp
+    networks:
+      - clinic-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/stream/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: clinic-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - livestream
+    networks:
+      - clinic-network
+
+networks:
+  clinic-network:
+    driver: bridge
