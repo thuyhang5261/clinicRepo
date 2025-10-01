@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Install dependencies for node-media-server
 RUN apk add --no-cache python3 make g++ ffmpeg
@@ -15,7 +15,7 @@ RUN npm ci --only=production
 COPY . .
 
 # Final stage
-FROM node:18-alpine
+FROM node:24-alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache ffmpeg
