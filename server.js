@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const NodeMediaServer = require('node-media-server');
@@ -8,45 +9,68 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
 
-// Middleware
-app.use(cors());
+// Middleware with updated CORS for HTTPS
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    
+    // Allow any origin for development
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Serve favicon to prevent 404
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end();
+// Create HTTP server
+const server = http.createServer(app);
+
+// HTTPS Configuration (optional - for development)
+let httpsServer = null;
+try {
+  // Check if SSL certificates exist (you'll need to create these)
+  const privateKey = fs.readFileSync(path.join(__dirname, 'ssl/private.key'), 'utf8');
+  const certificate = fs.readFileSync(path.join(__dirname, 'ssl/certificate.crt'), 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+  
+  httpsServer = https.createServer(credentials, app);
+} catch (error) {
+  console.log('SSL certificates not found. HTTPS server not started.');
+  console.log('To enable HTTPS, create ssl/private.key and ssl/certificate.crt files.');
+}
+
+// Socket.IO setup for both HTTP and HTTPS
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
-// Serve admin page
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/admin.html'));
-});
-
-// Serve viewer page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/index.html'));
-});
-
-app.get('/watch', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/index.html'));
-});
+// If HTTPS server exists, attach socket.io to it as well
+if (httpsServer) {
+  const ioHttps = socketIo(httpsServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+      credentials: true
+    }
+  });
+  
+  // Share the same event handlers
+  ioHttps.on('connection', handleSocketConnection);
+}
 
 // Chat storage
 let chatMessages = [];
 let connectedUsers = 0;
 let streamStatus = 'offline';
 
-// Socket.IO for real-time chat
-io.on('connection', (socket) => {
+// Extract socket connection handler to reuse for both HTTP and HTTPS
+function handleSocketConnection(socket) {
   connectedUsers++;
   console.log(`User connected. Total users: ${connectedUsers}`);
   console.log(`Socket ID: ${socket.id}`);
@@ -56,7 +80,7 @@ io.on('connection', (socket) => {
   
   // Broadcast user count and stream status
   io.emit('user_count', connectedUsers);
-  io.emit('stream_status', { status: streamStatus });
+  socket.emit('stream_status', { status: streamStatus });
   
   // Handle chat messages
   socket.on('chat_message', (data) => {
@@ -174,7 +198,10 @@ io.on('connection', (socket) => {
     // Notify others in room about disconnection
     socket.broadcast.emit('user-disconnected', socket.id);
   });
-});
+}
+
+// Socket.IO for real-time chat
+io.on('connection', handleSocketConnection);
 
 // Node Media Server configuration for RTMP
 const config = {
@@ -214,11 +241,27 @@ app.post('/api/chat/clear', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`HTTP Server running on port ${PORT}`);
   console.log(`RTMP Server running on port 1935`);
   console.log(`HTTP Media Server running on port 8000`);
-  console.log(`Stream Viewer: http://14.225.220.70:${PORT}/`);
-  console.log(`Stream Viewer: http://14.225.220.70:${PORT}/watch`);
+  console.log(`\nAccess URLs:`);
+  console.log(`Local: http://localhost:${PORT}/`);
+  console.log(`Network: http://14.225.220.70:${PORT}/`);
   console.log(`Admin Panel: http://14.225.220.70:${PORT}/admin`);
+  
+  if (httpsServer) {
+    httpsServer.listen(HTTPS_PORT, () => {
+      console.log(`\nHTTPS Server running on port ${HTTPS_PORT}`);
+      console.log(`Secure Admin Panel: https://14.225.220.70:${HTTPS_PORT}/admin`);
+    });
+  } else {
+    console.log(`\n⚠️  HTTPS not enabled. Camera access will only work on localhost.`);
+    console.log(`To enable HTTPS for network access:`);
+    console.log(`1. Create ssl/ directory`);
+    console.log(`2. Generate self-signed certificates:`);
+    console.log(`   openssl req -x509 -newkey rsa:4096 -keyout ssl/private.key -out ssl/certificate.crt -days 365 -nodes`);
+  }
 });

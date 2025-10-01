@@ -650,6 +650,18 @@
 
         async function startCamera() {
             try {
+                // Check if mediaDevices is available
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    // Check if we're on HTTPS or localhost
+                    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+                    
+                    if (!isSecure) {
+                        throw new Error('Camera access requires HTTPS. Please use https:// or access from localhost.');
+                    } else {
+                        throw new Error('Your browser does not support camera access.');
+                    }
+                }
+                
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: facingMode },
                     audio: true
@@ -674,7 +686,22 @@
                 statusIndicator.innerHTML = '<i class="fas fa-circle text-success"></i> Camera Active';
             } catch (error) {
                 console.error('Error accessing camera:', error);
-                statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Camera Error';
+                let errorMessage = 'Camera Error';
+                
+                if (error.message.includes('HTTPS')) {
+                    errorMessage = 'HTTPS Required';
+                    alert('Camera access requires HTTPS!\n\nOptions:\n1. Access via https://14.225.220.70:3000/admin\n2. Use localhost: http://localhost:3000/admin\n3. Set up SSL certificate for your server');
+                } else if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Camera Permission Denied';
+                    alert('Camera permission was denied. Please allow camera access and try again.');
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No Camera Found';
+                    alert('No camera device found. Please connect a camera and try again.');
+                } else {
+                    alert('Camera error: ' + error.message);
+                }
+                
+                statusIndicator.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> ${errorMessage}`;
             }
         }
 
