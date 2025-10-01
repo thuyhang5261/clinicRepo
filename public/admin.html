@@ -462,36 +462,72 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Socket.io CDN -->
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Socket.io CDN - Use the official CDN -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" integrity="sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Qt/HFklTJBj/gBOV8G3HcKn4NfQblz" crossorigin="anonymous"></script>
     
     <script>
         // Check if socket.io loaded
         if (typeof io === 'undefined') {
-            console.error('Socket.io failed to load');
-            document.addEventListener('DOMContentLoaded', function() {
-                const statusIndicator = document.getElementById('statusIndicator');
-                if (statusIndicator) {
-                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Socket.io Failed';
-                }
-                alert('Socket.io failed to load. Please check your internet connection.');
-            });
+            console.error('Socket.io failed to load from CDN');
+            // Try to load from backup CDN
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/socket.io-client@4.7.2/dist/socket.io.min.js';
+            script.onload = function() {
+                console.log('Socket.io loaded from backup CDN');
+                initializeApp();
+            };
+            script.onerror = function() {
+                console.error('Failed to load Socket.io from all sources');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    if (statusIndicator) {
+                        statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Socket.io Failed';
+                    }
+                    alert('Socket.io failed to load. Please check your internet connection.');
+                });
+            };
+            document.head.appendChild(script);
         } else {
+            console.log('Socket.io loaded successfully');
+            initializeApp();
+        }
+
+        function initializeApp() {
             // Socket connection with proper error handling
             let socket;
+            const socketUrl = 'http://14.225.220.70:3000'; // Use consistent URL
+            
             try {
-                // Update this to your actual server address if not localhost
-                socket = io('http://14.225.220.70:3000', {
+                socket = io(socketUrl, {
                     transports: ['websocket', 'polling'],
                     reconnectionAttempts: 5,
-                    reconnectionDelay: 1000
+                    reconnectionDelay: 1000,
+                    timeout: 10000
+                });
+                
+                console.log('Attempting to connect to:', socketUrl);
+                
+                socket.on('connect', () => {
+                    console.log('Successfully connected to server');
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    if (statusIndicator) {
+                        statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i> Connected';
+                    }
                 });
                 
                 socket.on('connect_error', (error) => {
                     console.error('Connection error:', error.message);
                     const statusIndicator = document.getElementById('statusIndicator');
                     if (statusIndicator) {
-                        statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Connection Failed';
+                        statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Connecting...';
+                    }
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    console.log('Disconnected:', reason);
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    if (statusIndicator) {
+                        statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Disconnected';
                     }
                 });
                 
@@ -501,6 +537,19 @@
                 
             } catch (error) {
                 console.error('Failed to initialize socket:', error);
+                const statusIndicator = document.getElementById('statusIndicator');
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Connection Failed';
+                }
+            }
+
+            // Safe emit function to check socket connection
+            function safeEmit(event, ...args) {
+                if (socket && socket.connected) {
+                    socket.emit(event, ...args);
+                } else {
+                    console.warn('Socket not connected, cannot emit:', event);
+                }
             }
         
         // Elements
