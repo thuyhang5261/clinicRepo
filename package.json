@@ -1,7 +1,7 @@
 {
-  "name": "livestream-server",
+  "name": "livestream-backend",
   "version": "1.0.0",
-  "description": "LiveStream server with HLS and WebRTC support",
+  "description": "Livestream backend server with WebSocket chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,17 +10,11 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "http-proxy": "^1.18.1",
-    "http-proxy-middleware": "^3.0.5",
     "node-media-server": "^2.6.3",
     "socket.io": "^4.7.2",
-    "ws": "^8.13.0",
-    "node-fetch": "^2.7.0"
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  },
-  "engines": {
-    "node": ">=16.0.0"
   }
 }
