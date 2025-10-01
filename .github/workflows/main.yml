@@ -20,7 +20,7 @@ jobs:
             cd /home/clinicRepo
             git fetch origin
             git checkout production
-            git pull
+            git pull origin production
             npm install
             npm run build
-            pm2 reload clinicRepoApp
+            pm2 restart clinicRepoApp || pm2 start npm --name "clinicRepoApp" -- start
