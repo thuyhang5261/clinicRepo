@@ -21,6 +21,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// Serve favicon to prevent 404
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 // Serve admin page
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '/public/admin.html'));
@@ -44,6 +49,7 @@ let streamStatus = 'offline';
 io.on('connection', (socket) => {
   connectedUsers++;
   console.log(`User connected. Total users: ${connectedUsers}`);
+  console.log(`Socket ID: ${socket.id}`);
   
   // Send existing messages to new user
   socket.emit('chat_history', chatMessages);
