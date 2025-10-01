@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>LiveStream App</title>
+    <!-- Suppress favicon error -->
+    <link rel="icon" href="data:,">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
@@ -460,11 +462,46 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <!-- Socket.io CDN -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     
     <script>
-        // Socket connection
-        const socket = io('http://localhost:3000');
+        // Check if socket.io loaded
+        if (typeof io === 'undefined') {
+            console.error('Socket.io failed to load');
+            document.addEventListener('DOMContentLoaded', function() {
+                const statusIndicator = document.getElementById('statusIndicator');
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Socket.io Failed';
+                }
+                alert('Socket.io failed to load. Please check your internet connection.');
+            });
+        } else {
+            // Socket connection with proper error handling
+            let socket;
+            try {
+                // Update this to your actual server address if not localhost
+                socket = io('http://14.225.220.70:3000', {
+                    transports: ['websocket', 'polling'],
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000
+                });
+                
+                socket.on('connect_error', (error) => {
+                    console.error('Connection error:', error.message);
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    if (statusIndicator) {
+                        statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Connection Failed';
+                    }
+                });
+                
+                socket.on('reconnect_attempt', (attemptNumber) => {
+                    console.log('Reconnection attempt', attemptNumber);
+                });
+                
+            } catch (error) {
+                console.error('Failed to initialize socket:', error);
+            }
         
         // Elements
         const video = document.getElementById('videoElement');
@@ -520,7 +557,7 @@
             addSystemMessage('💡 Ready to stream! Turn on camera and click GO LIVE for WebRTC streaming.');
             
             // Join as admin
-            socket.emit('join-room', roomId, 'admin');
+            safeEmit('join-room', roomId, 'admin');
         });
 
         // WebRTC Signaling Events
@@ -573,14 +610,14 @@
             // Handle ICE candidates
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    socket.emit('ice-candidate', event.candidate, roomId, viewerId);
+                    safeEmit('ice-candidate', event.candidate, roomId, viewerId);
                 }
             };
 
             // Create and send offer
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            socket.emit('offer', offer, roomId, viewerId);
+            safeEmit('offer', offer, roomId, viewerId);
 
             console.log('Offer sent to viewer:', viewerId);
         }
@@ -740,10 +777,10 @@
             addSystemMessage('🔴 Broadcasting flipped video to viewers');
             
             // Create peer connections for existing viewers
-            socket.emit('admin-going-live', roomId);
+            safeEmit('admin-going-live', roomId);
             
             // Notify server and viewers that stream is live
-            socket.emit('stream_status', { status: 'live', action: 'start' });
+            safeEmit('stream_status', { status: 'live', action: 'start' });
         }
         
         function stopSimpleStream() {
@@ -753,7 +790,7 @@
             Object.values(peerConnections).forEach(pc => pc.close());
             peerConnections = {};
             
-            socket.emit('stream_status', { status: 'offline', action: 'stop' });
+            safeEmit('stream_status', { status: 'offline', action: 'stop' });
         }
         
         function toggleVoice() {
@@ -819,7 +856,7 @@
         function sendMessage() {
             const message = chatInput.value.trim();
             if (message) {
-                socket.emit('chat_message', {
+                safeEmit('chat_message', {
                     username: 'Admin',
                     message: message,
                     type: 'admin'
@@ -829,7 +866,7 @@
         }
 
         function sendHeart() {
-            socket.emit('send_heart', { username: 'Admin' });
+            safeEmit('send_heart', { username: 'Admin' });
             addSystemMessage('❤️ Admin sent a heart');
         }
 
@@ -839,7 +876,7 @@
             input.accept = 'image/*,video/*';
             input.onchange = () => {
                 if (input.files[0]) {
-                    socket.emit('chat_message', {
+                    safeEmit('chat_message', {
                         username: 'Admin',
                         message: `📎 Shared: ${input.files[0].name}`,
                         type: 'admin'
@@ -880,19 +917,19 @@
             if (!isLive) {
                 toggleLive();
             }
-            socket.emit('stream_status', { status: 'live', action: 'start' });
+            safeEmit('stream_status', { status: 'live', action: 'start' });
         });
 
         document.getElementById('adminStopStream').addEventListener('click', () => {
             if (isLive) {
                 toggleLive();
             }
-            socket.emit('stream_status', { status: 'offline', action: 'stop' });
+            safeEmit('stream_status', { status: 'offline', action: 'stop' });
         });
 
         document.getElementById('adminClearChat').addEventListener('click', () => {
             if (confirm('Clear all chat messages?')) {
-                socket.emit('clear_chat');
+                safeEmit('clear_chat');
                 chatMessages.innerHTML = '<div class="chat-message system">Chat cleared by admin</div>';
             }
         });
@@ -900,7 +937,7 @@
         document.getElementById('adminSendMessage').addEventListener('click', () => {
             const message = prompt('Enter admin broadcast message:');
             if (message) {
-                socket.emit('chat_message', {
+                safeEmit('chat_message', {
                     username: 'Admin',
                     message: message,
                     type: 'admin'
@@ -939,17 +976,9 @@
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
 
-        // Connection status
-        socket.on('connect', () => {
-            console.log('Admin connected to server');
-            addSystemMessage('Admin panel connected');
-            addSystemMessage('💡 Ready to stream! Turn on camera and use OBS to capture this window.');
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Admin disconnected from server');
-            addSystemMessage('Admin panel disconnected');
-        });
+        // Remove duplicate connection handlers
+        } // Close the else block
+         // Add missing closing brace
     </script>
 </body>
 </html>

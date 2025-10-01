@@ -116,7 +116,7 @@ io.on('connection', (socket) => {
         '-i', tempFile,
         '-c', 'copy',
         '-f', 'flv',
-        'rtmp://localhost:1935/live/stream'
+        'rtmp://14.225.220.70:1935/live/stream'
       ]);
 
       ffmpeg.on('close', (code) => {
@@ -212,7 +212,7 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`RTMP Server running on port 1935`);
   console.log(`HTTP Media Server running on port 8000`);
-  console.log(`Stream Viewer: http://localhost:${PORT}/`);
-  console.log(`Stream Viewer: http://localhost:${PORT}/watch`);
-  console.log(`Admin Panel: http://localhost:${PORT}/admin`);
+  console.log(`Stream Viewer: http://14.225.220.70:${PORT}/`);
+  console.log(`Stream Viewer: http://14.225.220.70:${PORT}/watch`);
+  console.log(`Admin Panel: http://14.225.220.70:${PORT}/admin`);
 });
