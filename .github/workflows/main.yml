@@ -1,9 +1,7 @@
 name: HongNhanaction
-
 on:
   push:
     branches: [production]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
