@@ -12,6 +12,20 @@ let isMuted = false;
 let isFullscreen = false;
 let streamCheckInterval;
 
+// Mobile detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+console.log('Device info:', {
+    isMobile,
+    isIOS,
+    isSafari,
+    userAgent: navigator.userAgent,
+    HLSSupported: typeof Hls !== 'undefined' && Hls.isSupported(),
+    nativeHLSSupported: streamPlayer.canPlayType('application/vnd.apple.mpegurl')
+});
+
 async function checkStreamAvailability() {
     try {
         // Try localhost first for development, then production
@@ -79,6 +93,9 @@ function initPlayer() {
     }
     
     if (Hls.isSupported()) {
+      // Desktop browsers and Android Chrome - use HLS.js
+      console.log('Using HLS.js for playback');
+      
       // Cleanup previous instance
       if (hls) {
         hls.destroy();
@@ -102,9 +119,7 @@ function initPlayer() {
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         console.log('HLS manifest loaded');
-        streamPlayer.play().catch(err => {
-          console.log('Autoplay prevented:', err);
-        });
+        playVideo();
         updateStreamStatus(true);
         retryCount = 0;
         addChatMessage('System', 'Connected to live stream!');
@@ -129,21 +144,35 @@ function initPlayer() {
       });
       
     } else if (streamPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari fallback
+      // iOS Safari and other browsers with native HLS support
+      console.log('Using native HLS for playback (iOS Safari)');
+      
       streamPlayer.src = streamUrl;
+      
       streamPlayer.addEventListener('loadedmetadata', () => {
-        streamPlayer.play();
+        console.log('Native HLS loaded');
+        playVideo();
         updateStreamStatus(true);
+        retryCount = 0;
+        addChatMessage('System', 'Connected to live stream!');
         clearStreamCheck();
       });
-      streamPlayer.addEventListener('error', () => {
+      
+      streamPlayer.addEventListener('error', (e) => {
+        console.error('Native HLS error:', e);
         updateStreamStatus(false);
+        addChatMessage('System', 'Connection lost, retrying...');
         retryConnection();
       });
+      
+      streamPlayer.addEventListener('canplay', () => {
+        updateStreamStatus(true);
+      });
+      
     } else {
       console.error('HLS not supported in this browser');
       updateStreamStatus(false);
-      addChatMessage('System', 'Your browser does not support live streaming');
+      addChatMessage('System', 'Your browser does not support live streaming. Please use Chrome, Safari, or Firefox.');
     }
   }).catch(error => {
     console.error('Error initializing player:', error);
@@ -162,6 +191,63 @@ function scheduleStreamCheck() {
       initPlayer();
     }
   }, 10000); // Check every 10 seconds instead of more frequently
+}
+
+// Handle video playback with mobile-friendly approach
+function playVideo() {
+  const playPromise = streamPlayer.play();
+  
+  if (playPromise !== undefined) {
+    playPromise
+      .then(() => {
+        console.log('Video playing successfully');
+        // Hide any play button overlay
+        hidePlayButton();
+      })
+      .catch(error => {
+        console.log('Autoplay prevented:', error);
+        // Show play button for user interaction
+        showPlayButton();
+      });
+  }
+}
+
+function showPlayButton() {
+  let playButton = document.getElementById('manual-play-button');
+  if (!playButton) {
+    playButton = document.createElement('button');
+    playButton.id = 'manual-play-button';
+    playButton.innerHTML = '<i class="fas fa-play"></i> Tap to Play';
+    playButton.className = 'btn btn-primary btn-lg position-absolute';
+    playButton.style.cssText = `
+      top: 50%; left: 50%; 
+      transform: translate(-50%, -50%); 
+      z-index: 1000;
+      background: rgba(0,0,0,0.8);
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 50px;
+      font-size: 18px;
+    `;
+    
+    playButton.onclick = () => {
+      streamPlayer.play().then(() => {
+        hidePlayButton();
+      }).catch(console.error);
+    };
+    
+    streamPlayer.parentElement.style.position = 'relative';
+    streamPlayer.parentElement.appendChild(playButton);
+  }
+  playButton.style.display = 'block';
+}
+
+function hidePlayButton() {
+  const playButton = document.getElementById('manual-play-button');
+  if (playButton) {
+    playButton.style.display = 'none';
+  }
 }
 
 function clearStreamCheck() {
