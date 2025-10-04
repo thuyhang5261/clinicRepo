@@ -1,5 +1,19 @@
 {
+  "name": "clinic",
+  "version": "1.0.0",
+  "description": "Clinic Management System with Live Streaming",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["clinic", "livestream", "webrtc"],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.3"
   }
 }
