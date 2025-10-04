@@ -42,7 +42,7 @@ wss.on('connection', (ws) => {
         stopFFmpeg();
         ws.send(JSON.stringify({ type: 'stream-stopped' }));
       } else if (data.type === 'video-data' && isStreaming && ffmpegProcess) {
-        // Write binary video data to FFmpeg stdin
+        // Write JPEG binary data to FFmpeg stdin
         const buffer = Buffer.from(data.data, 'base64');
         if (ffmpegProcess.stdin.writable) {
           ffmpegProcess.stdin.write(buffer);
@@ -65,16 +65,15 @@ function startFFmpeg() {
   console.log('Starting FFmpeg process...');
   
   ffmpegProcess = spawn('ffmpeg', [
-    '-f', 'rawvideo',
-    '-pix_fmt', 'rgba',
-    '-s', '640x480',
-    '-r', '30',
+    '-f', 'image2pipe',
+    '-vcodec', 'mjpeg',
+    '-r', '10',
     '-i', 'pipe:0',
     '-c:v', 'libx264',
     '-preset', 'veryfast',
     '-tune', 'zerolatency',
     '-pix_fmt', 'yuv420p',
-    '-g', '30',
+    '-g', '20',
     '-b:v', '1500k',
     '-maxrate', '1500k',
     '-bufsize', '3000k',
