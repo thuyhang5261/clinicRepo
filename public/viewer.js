@@ -14,13 +14,35 @@ let streamCheckInterval;
 
 async function checkStreamAvailability() {
     try {
-        // Use localhost for development, production domain for production
-        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? `http://${window.location.host}` 
-            : '';
-        const streamUrl = `${baseUrl}/hls/live.m3u8`;
-        const response = await fetch(streamUrl, { method: 'HEAD' });
-        return response.ok;
+        // Try localhost first for development, then production
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (isLocalhost) {
+            // Running on localhost - use local server
+            const streamUrl = `http://${window.location.host}/hls/live.m3u8`;
+            const response = await fetch(streamUrl, { method: 'HEAD' });
+            return response.ok;
+        } else {
+            // Try localhost development server first, then production
+            try {
+                const devResponse = await fetch('http://localhost:3000/hls/live.m3u8', { 
+                    method: 'HEAD',
+                    mode: 'cors'
+                });
+                if (devResponse.ok) {
+                    // Development server is available
+                    window.useDevServer = true;
+                    return true;
+                }
+            } catch (devError) {
+                // Development server not available, continue to production check
+            }
+            
+            // Check production server
+            const response = await fetch('/hls/live.m3u8', { method: 'HEAD' });
+            window.useDevServer = false;
+            return response.ok;
+        }
     } catch (error) {
         // Only log error once per session to reduce spam
         if (!window.streamErrorLogged) {
@@ -44,11 +66,17 @@ function initPlayer() {
     }
     
     // Stream is available, proceed with HLS initialization
-    // Use localhost for development, production domain for production
-    const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? `http://${window.location.host}` 
-        : '';
-    const streamUrl = `${baseUrl}/hls/live.m3u8`;
+    // Determine stream URL based on server availability
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    let streamUrl;
+    
+    if (isLocalhost) {
+        streamUrl = `http://${window.location.host}/hls/live.m3u8`;
+    } else if (window.useDevServer) {
+        streamUrl = 'http://localhost:3000/hls/live.m3u8';
+    } else {
+        streamUrl = '/hls/live.m3u8';
+    }
     
     if (Hls.isSupported()) {
       // Cleanup previous instance
