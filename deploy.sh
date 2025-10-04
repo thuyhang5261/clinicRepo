@@ -48,17 +48,17 @@ echo "Installing Node.js dependencies..."
 npm install
 
 # 8. Create HLS directory
-sudo mkdir -p /var/www/html/hls
-sudo chown -R www-data:www-data /var/www/html/hls
-sudo chmod -R 755 /var/www/html/hls
+sudo mkdir -p $APP_DIR/public/hls
+sudo chown -R $USER:$USER $APP_DIR/public/hls
+sudo chmod -R 755 $APP_DIR/public/hls
 
 # 9. Copy nginx configuration
 sudo cp nginx.conf /etc/nginx/nginx.conf
 
 # 10. Start/restart services
 echo "Starting application with PM2..."
-pm2 stop clinic 2>/dev/null || true
-pm2 start server.js --name clinic
+pm2 stop clinic-app 2>/dev/null || true
+pm2 start server.js --name clinic-app
 pm2 save
 pm2 startup
 
@@ -78,4 +78,4 @@ echo "✅ Deployment complete!"
 echo "📱 Admin Panel: https://phongkhamhongnhan.com/admin"
 echo "📺 Viewer: https://phongkhamhongnhan.com/"
 echo "📊 Status: pm2 status"
-echo "📋 Logs: pm2 logs clinic"
+echo "📋 Logs: pm2 logs clinic-app"
