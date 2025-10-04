@@ -158,28 +158,30 @@ function updateStreamButton() {
 function captureAndSendFrames() {
   if (!isStreaming) return;
   
-  // Draw current video frame to canvas
-  ctx.drawImage(videoElement, 0, 0, processCanvas.width, processCanvas.height);
-  
-  // Convert to JPEG blob for better compression
-  processCanvas.toBlob((blob) => {
-    if (blob && ws && ws.readyState === WebSocket.OPEN) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result.split(',')[1];
-        ws.send(JSON.stringify({
-          type: 'video-data',
-          data: base64data,
-          timestamp: Date.now()
-        }));
-      };
-      reader.readAsDataURL(blob);
-    }
+  // Use WebRTC MediaRecorder for better compression
+  if (!mediaRecorder) {
+    mediaRecorder = new MediaRecorder(localStream, {
+      mimeType: 'video/webm;codecs=vp8',
+      videoBitsPerSecond: 1000000
+    });
     
-    if (isStreaming) {
-      setTimeout(captureAndSendFrames, 100); // 10 FPS for better performance
-    }
-  }, 'image/jpeg', 0.7);
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result.split(',')[1];
+          ws.send(JSON.stringify({
+            type: 'video-chunk',
+            data: base64data,
+            timestamp: Date.now()
+          }));
+        };
+        reader.readAsDataURL(event.data);
+      }
+    };
+    
+    mediaRecorder.start(100); // Send chunks every 100ms
+  }
 }
 
 // UI controls
