@@ -1,5 +1,6 @@
 let localStream = null;
 let ws = null;
+let mediaRecorder = null;
 let isStreaming = false;
 let isCameraActive = false;
 let isMuted = false;
@@ -10,7 +11,10 @@ const processCanvas = document.getElementById('processCanvas');
 const ctx = processCanvas.getContext('2d');
 const statusIndicator = document.getElementById('statusIndicator');
 
-// WebSocket connection
+// WebSocket connection with retry logic
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+
 function connectWebSocket() {
   // Use localhost for development, production domain for production
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -29,13 +33,21 @@ function connectWebSocket() {
   
   ws.onopen = () => {
     console.log('WebSocket connected');
+    reconnectAttempts = 0; // Reset retry counter on successful connection
     updateStatus('Connected - Ready to stream', 'success');
   };
   
   ws.onclose = () => {
     console.log('WebSocket disconnected');
-    updateStatus('Disconnected - Reconnecting...', 'error');
-    setTimeout(connectWebSocket, 3000);
+    
+    // Only retry if we haven't exceeded max attempts
+    if (reconnectAttempts < maxReconnectAttempts) {
+      reconnectAttempts++;
+      updateStatus(`Disconnected - Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`, 'error');
+      setTimeout(connectWebSocket, 3000 * reconnectAttempts); // Exponential backoff
+    } else {
+      updateStatus('Unable to connect to server. Please check if the server is running.', 'error');
+    }
   };
   
   ws.onerror = (error) => {
@@ -136,6 +148,12 @@ function stopStreaming() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'stop-stream' }));
   }
+  
+  // Stop and cleanup MediaRecorder
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  mediaRecorder = null;
   
   isStreaming = false;
   updateStreamButton();
