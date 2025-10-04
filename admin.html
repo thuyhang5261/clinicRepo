@@ -1,0 +1,11 @@
+<!-- ...existing code... -->
+<!-- Add before closing </body> tag -->
+<script src="admin.js"></script>
+<style>
+    #processCanvas { display: none; }
+    .control-btn.active { background: #4CAF50; }
+    .control-btn.streaming { background: #f44336; animation: pulse 1s infinite; }
+    .control-btn.muted { background: #999; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    .livestream-window.expanded { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
+</style>

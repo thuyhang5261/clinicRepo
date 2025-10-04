@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Add any other head elements here -->
+</head>
+<body>
+    <!-- ...existing body content... -->
+
+    <!-- Add before closing </body> tag -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="viewer.js"></script>
+    <style>
+        #offlineMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        .status-indicator.live { background: #f44336; }
+        .control-btn.pulse { animation: heartbeat 0.6s ease; }
+        @keyframes heartbeat { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.2); } 
+            100% { transform: scale(1); }
+        }
+    </style>
+</body>
+</html>
