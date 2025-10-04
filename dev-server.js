@@ -5,26 +5,23 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// Set security headers including CSP
+// Development mode - more permissive CSP for debugging
 app.use((req, res, next) => {
-  // Content Security Policy - Allow connections for DevTools and development
+  // Very permissive CSP for development and debugging
   res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
-    "font-src 'self' https://cdnjs.cloudflare.com; " +
-    "img-src 'self' data: https:; " +
-    "media-src 'self' blob:; " +
-    "connect-src 'self' ws://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:*; " +
-    "frame-src 'none'; " +
-    "object-src 'none'; " +
-    "base-uri 'self';"
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; " +
+    "connect-src 'self' 'unsafe-inline' ws: wss: http: https:; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; " +
+    "style-src 'self' 'unsafe-inline' https: http:; " +
+    "img-src 'self' data: blob: https: http:; " +
+    "media-src 'self' blob: https: http:; " +
+    "font-src 'self' data: https: http:;"
   );
   
-  // Other security headers
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Allow all origins for development
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   next();
 });
@@ -109,10 +106,10 @@ app.get('/admin', (req, res) => {
 app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
   res.json({
     "devtools_frontend_url": `chrome-devtools://devtools/bundled/inspector.html?ws=localhost:9229`,
-    "description": "Clinic App",
+    "description": "Clinic App - Development",
     "faviconUrl": "http://localhost:3000/favicon.ico",
-    "id": "clinic-app",
-    "title": "Clinic Live Stream App",
+    "id": "clinic-app-dev",
+    "title": "Clinic Live Stream App (Development)",
     "type": "node",
     "url": "http://localhost:3000/",
     "webSocketDebuggerUrl": `ws://localhost:9229`
@@ -150,6 +147,8 @@ segment0.ts
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Development server is running on http://localhost:${PORT}`);
+  console.log(`🔧 Debugger available at chrome://inspect`);
+  console.log(`📊 DevTools endpoint: http://localhost:${PORT}/.well-known/appspecific/com.chrome.devtools.json`);
   startFFmpeg();
 });

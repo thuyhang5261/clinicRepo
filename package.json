@@ -4,8 +4,11 @@
   "description": "Clinic Management System with Live Streaming",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev-permissive": "node --inspect=0.0.0.0:9229 dev-server.js",
+    "debug": "node --inspect=0.0.0.0:9229 server.js",
+    "debug-dev": "nodemon --inspect=0.0.0.0:9229 server.js"
   },
   "keywords": ["clinic", "livestream", "webrtc"],
   "author": "",
