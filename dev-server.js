@@ -10,7 +10,7 @@ app.use((req, res, next) => {
   // Very permissive CSP for development and debugging
   res.setHeader('Content-Security-Policy', 
     "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; " +
-    "connect-src 'self' 'unsafe-inline' ws: wss: http: https:; " +
+    "connect-src 'self' 'unsafe-inline' ws: wss: http: https: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; " +
     "style-src 'self' 'unsafe-inline' https: http:; " +
     "img-src 'self' data: blob: https: http:; " +

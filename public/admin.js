@@ -12,9 +12,19 @@ const statusIndicator = document.getElementById('statusIndicator');
 
 // WebSocket connection
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}`;
+  // Use localhost for development, production domain for production
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
+  let wsUrl;
+  if (isDevelopment) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsUrl = `${protocol}//${window.location.host}`;
+  } else {
+    // For production, use the production WebSocket URL
+    wsUrl = `wss://phongkhamhongnhan.com/`;
+  }
+  
+  console.log('Connecting to WebSocket:', wsUrl);
   ws = new WebSocket(wsUrl);
   
   ws.onopen = () => {
@@ -34,13 +44,32 @@ function connectWebSocket() {
   };
   
   ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Received:', data);
-    
-    if (data.type === 'stream-started') {
-      updateStatus('🔴 STREAMING LIVE to VPS', 'streaming');
-    } else if (data.type === 'stream-stopped') {
-      updateStatus('Stream stopped', 'warning');
+    try {
+      const data = JSON.parse(event.data);
+      console.log('Received:', data);
+      
+      switch(data.type) {
+        case 'connected':
+          updateStatus('WebSocket connected - Ready to stream', 'success');
+          break;
+        case 'stream-started':
+          updateStatus('🔴 STREAMING LIVE to VPS', 'streaming');
+          isStreaming = true;
+          updateStreamButton();
+          break;
+        case 'stream-stopped':
+          updateStatus('Stream stopped', 'warning');
+          isStreaming = false;
+          updateStreamButton();
+          break;
+        case 'pong':
+          console.log('Received pong from server');
+          break;
+        default:
+          console.log('Unknown message type:', data.type);
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
     }
   };
 }
@@ -93,8 +122,7 @@ function startStreaming() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'start-stream' }));
     isStreaming = true;
-    
-    document.getElementById('liveBtn').classList.add('streaming');
+    updateStreamButton();
     updateStatus('🔴 LIVE - Streaming to phongkhamhongnhan.com', 'streaming');
     
     // Start capturing and sending frames
@@ -110,8 +138,20 @@ function stopStreaming() {
   }
   
   isStreaming = false;
-  document.getElementById('liveBtn').classList.remove('streaming');
+  updateStreamButton();
   updateStatus('Stream ended', 'warning');
+}
+
+// Update stream button appearance
+function updateStreamButton() {
+  const liveBtn = document.getElementById('liveBtn');
+  if (isStreaming) {
+    liveBtn.classList.add('streaming');
+    liveBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Live';
+  } else {
+    liveBtn.classList.remove('streaming');
+    liveBtn.innerHTML = '<i class="fas fa-broadcast-tower"></i> Go Live';
+  }
 }
 
 // Capture and send video frames
@@ -218,6 +258,13 @@ document.getElementById('closeBtn').addEventListener('click', () => {
   if (isStreaming) stopStreaming();
   if (isCameraActive) stopCamera();
 });
+
+// WebSocket keepalive
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 30000); // Send ping every 30 seconds
 
 // Initialize connection when page loads
 document.addEventListener('DOMContentLoaded', () => {
