@@ -14,7 +14,12 @@ let streamCheckInterval;
 
 async function checkStreamAvailability() {
     try {
-        const response = await fetch('/hls/live.m3u8', { method: 'HEAD' });
+        // Use localhost for development, production domain for production
+        const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? `http://${window.location.host}` 
+            : '';
+        const streamUrl = `${baseUrl}/hls/live.m3u8`;
+        const response = await fetch(streamUrl, { method: 'HEAD' });
         return response.ok;
     } catch (error) {
         // Only log error once per session to reduce spam
@@ -39,7 +44,11 @@ function initPlayer() {
     }
     
     // Stream is available, proceed with HLS initialization
-    const streamUrl = '/hls/live.m3u8';
+    // Use localhost for development, production domain for production
+    const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? `http://${window.location.host}` 
+        : '';
+    const streamUrl = `${baseUrl}/hls/live.m3u8`;
     
     if (Hls.isSupported()) {
       // Cleanup previous instance
